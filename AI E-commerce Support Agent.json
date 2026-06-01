@@ -1,0 +1,938 @@
+{
+  "name": "AI E-commerce Support Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "models/gemini-3-flash-preview"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Você é um atendente de e-commerce.\n\nNúmero do pedido: {{ $json.order_number }}\n\nStatus: {{ $json.status }}\n\nPrevisão de entrega: {{ $json.delivery_date }}\n\nCrie uma resposta amigável para o cliente explicando a situação do pedido."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        1392,
+        -512
+      ],
+      "id": "5daed5f6-fc04-4585-a3da-f9a79d489ebc",
+      "name": "Message a model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "mHBmMBnbu5KIJhyT",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ecommerce-chat",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e0a21754-888b-4251-9a10-5e1ff8ca58e5",
+      "name": "Incoming Customer Message",
+      "webhookId": "80518928-fb6d-4be5-ba81-21875385086f"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "models/gemini-3-flash-preview"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Você é um classificador de mensagens de atendimento para um e-commerce.\n\nAnalise a mensagem do cliente e responda APENAS com uma destas opções:\n\nTRACK_ORDER\nRETURN_PRODUCT\nFAQ\nHUMAN_SUPPORT\n\nRegras:\n\n- TRACK_ORDER: cliente quer saber sobre pedido, entrega, rastreamento ou status.\n- RETURN_PRODUCT: cliente quer trocar, devolver ou reembolsar um produto.\n- FAQ: dúvidas gerais sobre frete, pagamento, estoque, produtos ou políticas da loja.\n- HUMAN_SUPPORT: cliente quer falar com um humano, está muito irritado ou tem um problema complexo.\n\nMensagem:\n{{ $('Incoming Customer Message').item.json.body.message }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "244d0335-ed47-4db5-b39c-6e0a5d9e387d",
+      "name": "Intent Classifier",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "mHBmMBnbu5KIJhyT",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.content.parts[0].text }}",
+                    "rightValue": "TRACK_ORDER",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "ba65dd28-b2ed-49ac-9504-a0e3b42c516a"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "cca86b54-e78a-4f14-a9a4-01af37cdd699",
+                    "leftValue": "={{ $json.content.parts[0].text }}",
+                    "rightValue": "RETURN_PRODUCT",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c074c72e-0bc5-4f18-ac2c-22fe0c2a3a37",
+                    "leftValue": "={{ $json.content.parts[0].text }}",
+                    "rightValue": "FAQ",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "78577a78-a849-465c-8231-b9445edd267a",
+                    "leftValue": "={{ $json.content.parts[0].text }}",
+                    "rightValue": "=HUMAN_SUPPORT",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        608,
+        -32
+      ],
+      "id": "644e2a09-a4b3-4106-8228-55d4a97c37a5",
+      "name": "Route by Intent"
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $('Incoming Customer Message').item.json.body.message;\n\nconst pedido = msg.match(/\\d+/)?.[0] || null;\n\nreturn [{\n  json: {\n    ...$input.first().json,\n    order_number: pedido\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        -512
+      ],
+      "id": "9dc6006d-ac2e-481c-8914-644de3745056",
+      "name": "Extract Order Number"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1RUQqcLv1OfZJhStM6M1g7szmmHDQqHCvyTFBEBu1_1A",
+          "mode": "list",
+          "cachedResultName": "Pedidos Ecommerce",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1RUQqcLv1OfZJhStM6M1g7szmmHDQqHCvyTFBEBu1_1A/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Página1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1RUQqcLv1OfZJhStM6M1g7szmmHDQqHCvyTFBEBu1_1A/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "order_number",
+              "lookupValue": "={{ $json.order_number }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        960,
+        -512
+      ],
+      "id": "fa44d431-c72a-45e3-80cc-4b93c7fb5843",
+      "name": "ookup Order in Sheets",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "DHmJV2aP8HPbSXsv",
+          "name": "Google Sheets OAuth2 API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b25d2634-7118-4297-af12-2f349d58cbad",
+              "leftValue": "={{ $json.order_number }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1168,
+        -512
+      ],
+      "id": "4e72d2a9-b1ec-4bd5-8c1f-172da66c6ad3",
+      "name": "Generate Order Status Reply"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ac8894f4-24b4-4c55-822a-8ff43fea5b29",
+              "name": "reply",
+              "value": "={{ $json.content.parts[0].text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1744,
+        -512
+      ],
+      "id": "ec71a5fa-3164-49fe-a3f5-70106e075cb3",
+      "name": "Set Order Reply"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2537aa64-1717-46db-bd89-1e43e6ef4c17",
+              "name": "reply",
+              "value": "Não encontrei esse pedido em nosso sistema. Poderia verificar o número informado e tentar novamente?",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1296,
+        -368
+      ],
+      "id": "76764f22-6905-4065-909a-4f0badd5c6c4",
+      "name": "Set Order Not Found Reply"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e820ba01-0c4a-4453-b218-3466650f4234",
+              "name": "Troca/Devolução",
+              "value": "Para solicitar uma troca, informe o número do pedido e o motivo da devolução.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        816,
+        -160
+      ],
+      "id": "c2739e02-1d3a-41d1-861f-0a92a89cead2",
+      "name": "Prepare Return Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $('Incoming Customer Message').item.json.body.message;\n\nconst pedido = msg.match(/\\d+/)?.[0] || \"não informado\";\n\nreturn [{\n  json: {\n    ...$input.first().json,\n    order_number: pedido\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        -160
+      ],
+      "id": "5bb5dcc4-d660-465a-9a18-e047d4f45eec",
+      "name": "Extract Return Order Number"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "60792ebe-3b1f-4b24-93bf-c66a8406e37c",
+              "name": "policy",
+              "value": "Trocas e devoluções podem ser solicitadas em até 7 dias após o recebimento.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1184,
+        -160
+      ],
+      "id": "c09df26c-8d39-4781-ab41-d5cbfea1097c",
+      "name": "Set Return Data"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "models/gemini-3-flash-preview"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Você é um atendente de e-commerce.\n\nAjude o cliente com uma solicitação de troca ou devolução.\n\nNúmero do pedido:\n{{ $json.order_number }}\n\nPolítica:\n{{ $json.policy }}\n\nResponda de forma amigável."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        1376,
+        -160
+      ],
+      "id": "4420ea14-6b57-45ed-92c1-e8d2a47fd9c2",
+      "name": "Generate Return Instructions",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "mHBmMBnbu5KIJhyT",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fa874bcd-61e0-456e-b836-591f04503a00",
+              "name": "reply",
+              "value": "={{ $json.content.parts[0].text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1680,
+        -160
+      ],
+      "id": "a6ecaa54-db0d-4481-9532-df77aebe3ef9",
+      "name": "Set Return Reply"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "78804312-b51d-4ce1-993c-2b7968872d7e",
+              "name": "Dúvidas Gerais",
+              "value": "Posso ajudar com dúvidas sobre frete, pagamento e produtos.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        864,
+        48
+      ],
+      "id": "5b677dcb-3fd0-468d-9499-fd944cbc0661",
+      "name": "Load FAQ Context"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "models/gemini-3-flash-preview"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Você é um atendente de uma loja online.\n\nResponda apenas usando as informações abaixo:\n\n- Prazo de entrega: 5 a 10 dias úteis.\n- Frete grátis acima de R$ 199.\n- Parcelamento em até 12x sem juros.\n- Atendimento de segunda a sexta das 8h às 18h.\n- Trocas e devoluções em até 7 dias após o recebimento.\n\nPergunta do cliente:\n\n{{ $('Incoming Customer Message').item.json.body.message }}\n\nSe a resposta não estiver nas informações acima, diga:\n\"Vou encaminhar sua dúvida para um especialista.\""
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        1056,
+        48
+      ],
+      "id": "544cf42d-1402-4da1-ab46-3fd2ea1d2959",
+      "name": "Generate FAQ Answer",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "mHBmMBnbu5KIJhyT",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a5c697aa-87da-481b-aa95-21e3144723d3",
+              "name": "reply",
+              "value": "={{ $json.content.parts[0].text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1344,
+        48
+      ],
+      "id": "8370359e-7a8f-402a-a99b-65edc8e42389",
+      "name": "Set FAQ Reply"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9f10975d-520b-492e-89f9-109109cc506e",
+              "name": "Atendente Humano",
+              "value": "Vou encaminhar seu atendimento para um especialista.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        928,
+        288
+      ],
+      "id": "3c768aa3-fdc5-4cbe-bd86-299f1e20fee5",
+      "name": "Human Escalation Request"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7b5db1c4-293c-4c80-8ca8-13d9e523a7d8",
+              "name": "reply",
+              "value": "Entendi! Vou encaminhar seu atendimento para um especialista da nossa equipe. Aguarde alguns instantes que alguém irá ajudá-lo. 😊",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1136,
+        288
+      ],
+      "id": "9a217f70-92e8-49de-9623-09b8574c4b46",
+      "name": "Set Human Support Reply"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2208,
+        -496
+      ],
+      "id": "ec302cac-ea9f-4984-a81b-1ca38a35c23d",
+      "name": "Merge Order + Return"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2000,
+        48
+      ],
+      "id": "7e68fb4e-5972-4dda-8e58-c3ef5c7e104e",
+      "name": "Merge FAQ + Human"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2432,
+        -304
+      ],
+      "id": "dd480d0f-634e-4283-b3d1-ffa12a6c6849",
+      "name": "Merge All Responses"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "17781708-8f1d-4a41-bc32-aec77915ac64",
+              "name": "reply",
+              "value": "={{ $json.reply }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2640,
+        -304
+      ],
+      "id": "becc1c9d-8cce-4909-a59b-28dfffd02581",
+      "name": "Final API Response"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2848,
+        -304
+      ],
+      "id": "95612c74-768f-401d-b292-9574f85e5085",
+      "name": "Return Response"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Message a model1": {
+      "main": [
+        [
+          {
+            "node": "Set Order Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Incoming Customer Message": {
+      "main": [
+        [
+          {
+            "node": "Intent Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intent Classifier": {
+      "main": [
+        [
+          {
+            "node": "Route by Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Intent": {
+      "main": [
+        [
+          {
+            "node": "Extract Order Number",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Return Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Load FAQ Context",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Human Escalation Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Order Number": {
+      "main": [
+        [
+          {
+            "node": "ookup Order in Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ookup Order in Sheets": {
+      "main": [
+        [
+          {
+            "node": "Generate Order Status Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Order Status Reply": {
+      "main": [
+        [
+          {
+            "node": "Message a model1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Order Not Found Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Order Reply": {
+      "main": [
+        [
+          {
+            "node": "Merge Order + Return",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Order Not Found Reply": {
+      "main": [
+        [
+          {
+            "node": "Merge Order + Return",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Prepare Return Request": {
+      "main": [
+        [
+          {
+            "node": "Extract Return Order Number",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Return Order Number": {
+      "main": [
+        [
+          {
+            "node": "Set Return Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Return Data": {
+      "main": [
+        [
+          {
+            "node": "Generate Return Instructions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Return Instructions": {
+      "main": [
+        [
+          {
+            "node": "Set Return Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Return Reply": {
+      "main": [
+        [
+          {
+            "node": "Merge Order + Return",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Load FAQ Context": {
+      "main": [
+        [
+          {
+            "node": "Generate FAQ Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate FAQ Answer": {
+      "main": [
+        [
+          {
+            "node": "Set FAQ Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set FAQ Reply": {
+      "main": [
+        [
+          {
+            "node": "Merge FAQ + Human",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human Escalation Request": {
+      "main": [
+        [
+          {
+            "node": "Set Human Support Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Human Support Reply": {
+      "main": [
+        [
+          {
+            "node": "Merge FAQ + Human",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Order + Return": {
+      "main": [
+        [
+          {
+            "node": "Merge All Responses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge FAQ + Human": {
+      "main": [
+        [
+          {
+            "node": "Merge All Responses",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge All Responses": {
+      "main": [
+        [
+          {
+            "node": "Final API Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final API Response": {
+      "main": [
+        [
+          {
+            "node": "Return Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "d667a3a8-7864-437a-ac1f-363b9676e6e9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3d675744e9b4fb81f115d4057cfe1cf628ffae065a6fa911e1e014955000753e"
+  },
+  "id": "J5JEoUWX7AMFKFkB",
+  "tags": []
+}
